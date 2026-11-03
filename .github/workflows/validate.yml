@@ -1,0 +1,29 @@
+name: Validate Superloop integration
+
+on:
+  pull_request:
+    paths:
+      - "custom_components/superloop/**"
+      - "tests/**"
+      - ".github/workflows/validate.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Syntax, JSON and unit tests
+        run: |
+          python -m compileall -q custom_components/superloop tests
+          python -m json.tool custom_components/superloop/strings.json > /dev/null
+          python -m json.tool custom_components/superloop/translations/en.json > /dev/null
+          python -m json.tool custom_components/superloop/manifest.json > /dev/null
+          python -m unittest discover -s tests -v

@@ -42,12 +42,18 @@
 
 <hr>
 
+<h2>Authentication compatibility (Superloop App 2.0)</h2>
+<p><strong>The new email + postcode + one-time-code login is not yet implemented.</strong> Superloop's current App 2.0 authentication API has not been confirmed and must not be guessed. The old password and login-jwt paths are retained for existing accounts.</p>
+<p>This development branch includes an <strong>experimental existing-access-token option</strong>. It tests whether a token from a session you already own works against the legacy <code>getServices</code> API. It does not send an OTP, refresh App 2.0 tokens, or guarantee the token works.</p>
+<p>If you test this option, enter a token <strong>only in your own Home Assistant instance</strong>. Do not paste access tokens, OTPs, cookies or postcodes into GitHub issues or chat. If Home Assistant says the token is incompatible, the new app likely requires a different data API as well.</p>
+<p>See <code>docs/passwordless-auth-discovery.md</code> for a safe method of identifying API request shapes without sharing credentials.</p>
+<hr>
 <h2>⚙️ Configuration</h2>
 <ol>
   <li>Go to <strong>Settings → Devices &amp; Services</strong></li>
   <li>Click <strong>+ Add Integration</strong></li>
   <li>Search for <strong>Superloop</strong></li>
-  <li>Enter your <strong>Superloop email</strong> and <strong>password</strong> to link your account.</li>
+  <li>Choose <strong>Legacy email and password</strong>, or try <strong>Existing access token (experimental)</strong>. The App 2.0 OTP protocol is not yet implemented.</li>
 </ol>
 <p>Done! Your sensors will now appear automatically.</p>
 
