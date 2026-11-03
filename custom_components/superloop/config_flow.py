@@ -8,6 +8,11 @@ import time
 from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .api import BASE_API_URL
+from .token_utils import jwt_expiry_ms, strip_bearer_prefix
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +45,93 @@ class SuperloopConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._mfa_method = "MfaOverSMS"
 
     async def async_step_user(self, user_input=None):
+        """Choose a login method without assuming every customer has a password."""
+        if user_input is not None:
+            if user_input["auth_method"] == "existing_token":
+                return await self.async_step_existing_token()
+            return await self.async_step_password()
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema({
+                vol.Required("auth_method", default="existing_token"): vol.In({
+                    "existing_token": "Existing access token (experimental)",
+                    "legacy_password": "Email and password (legacy)",
+                }),
+            }),
+        )
+
+    async def async_step_existing_token(self, user_input=None):
+        """Validate an existing token against the original account API.
+
+        This is a diagnostic workaround, NOT an implementation of Superloop's
+        currently undocumented email/postcode/OTP authentication protocol.
+        """
+        errors = {}
+        if user_input is not None:
+            email = user_input["email"].strip().lower()
+            token = strip_bearer_prefix(user_input["access_token"])
+            exp_ms = jwt_expiry_ms(token)
+            if not email or not token or (exp_ms is not None and exp_ms <= int(time.time() * 1000)):
+                errors["base"] = "invalid_auth"
+            else:
+                try:
+                    session = async_get_clientsession(self.hass)
+                    async with async_timeout.timeout(15):
+                        async with session.get(
+                            f"{BASE_API_URL}/getServices/",
+                            headers={"Authorization": f"Bearer {token}"},
+                            allow_redirects=False,
+                        ) as response:
+                            if response.status in (401, 403):
+                                errors["base"] = "invalid_auth"
+                            elif response.status != 200:
+                                errors["base"] = "incompatible_api"
+                            else:
+                                try:
+                                    services = await response.json()
+                                except (ValueError, aiohttp.ContentTypeError):
+                                    errors["base"] = "incompatible_api"
+                                else:
+                                    if not isinstance(services, (dict, list)):
+                                        errors["base"] = "incompatible_api"
+                except (asyncio.TimeoutError, aiohttp.ClientError):
+                    errors["base"] = "cannot_connect"
+                except Exception:
+                    _LOGGER.exception("Unexpected error validating Superloop access token")
+                    errors["base"] = "unknown"
+
+                if not errors:
+                    # Never store an OTP, postcode or password. Token stays in HA's
+                    # protected config-entry storage, not in logs or Git.
+                    data = {
+                        "email": email,
+                        "access_token": token,
+                        "refresh_token": None,
+                        "expires_at_ms": exp_ms,
+                        "login_method": "external_token",
+                    }
+                    if self._reauth_entry:
+                        self.hass.config_entries.async_update_entry(
+                            self._reauth_entry,
+                            data={**self._reauth_entry.data, **data},
+                        )
+                        await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
+                        return self.async_abort(reason="reauth_successful")
+                    return self.async_create_entry(title=email, data=data)
+
+        return self.async_show_form(
+            step_id="existing_token",
+            data_schema=vol.Schema({
+                vol.Required("email", default=self._email or ""): str,
+                vol.Required("access_token"): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD),
+                ),
+            }),
+            errors=errors,
+        )
+
+    async def async_step_password(self, user_input=None):
         _LOGGER.debug("Starting user setup step")
         if user_input is not None:
             self._email = user_input["email"]
