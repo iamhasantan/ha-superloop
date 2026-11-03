@@ -1,6 +1,7 @@
 """Small authentication helpers that do not depend on Home Assistant."""
 
 import base64
+import binascii
 import json
 
 
@@ -30,5 +31,5 @@ def jwt_expiry_ms(token: str) -> int | None:
         if exp <= 0:
             return None
         return int(exp * 1000)
-    except (ValueError, UnicodeError, TypeError, KeyError, IndexError):
+    except (ValueError, UnicodeError, TypeError, KeyError, IndexError, binascii.Error):
         return None
