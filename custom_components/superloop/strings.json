@@ -3,34 +3,46 @@
   "config": {
     "step": {
       "user": {
-        "title": "Connect to Superloop",
-        "description": "Set up Superloop integration to view your data usage details",
+        "title": "Superloop authentication",
+        "description": "Choose your account authentication method. The current Superloop App 2.0 OTP flow is not yet supported directly.",
         "data": {
-          "username": "Email Address",
-          "password": "Password",
-          "use_browser_auth": "Use browser for authentication"
+          "auth_method": "Authentication method"
         }
       },
-      "browser_auth": {
-        "title": "Browser Authentication",
-        "description": "Click below to sign in to your Superloop account",
-        "data": {}
-      },
-      "two_factor": {
-        "title": "Two-Factor Authentication",
-        "description": "Enter the verification code sent to your device",
+      "password": {
+        "title": "Legacy email and password",
+        "description": "Use this only if your Superloop account still has a password.",
         "data": {
-          "verification_code": "Verification Code"
+          "email": "Email address",
+          "password": "Password",
+          "mfa_method": "Verification method"
+        }
+      },
+      "existing_token": {
+        "title": "Existing access token (experimental)",
+        "description": "Paste an access token obtained from your own Superloop session. Home Assistant checks whether it can access the original Superloop services API. This is a diagnostic workaround, not automatic email/postcode/OTP login. Keep the token private.",
+        "data": {
+          "email": "Account email",
+          "access_token": "Access token"
+        }
+      },
+      "2fa": {
+        "title": "Legacy two-factor authentication",
+        "description": "Enter the verification code received for the legacy account.",
+        "data": {
+          "code": "Verification code"
         }
       }
     },
     "error": {
       "cannot_connect": "Failed to connect to Superloop. Please try again.",
-      "invalid_auth": "Invalid username or password",
+      "invalid_auth": "Invalid or expired credentials or token",
       "invalid_verification_code": "Invalid verification code",
       "verification_failed": "Verification failed",
       "no_auth_token": "No authentication token received",
-      "unknown": "Unexpected error occurred"
+      "unknown": "Unexpected error occurred",
+      "incompatible_api": "The token was not accepted by the original Superloop services API. This token may belong to the new App 2.0 system.",
+      "invalid_2fa": "Verification code was rejected"
     },
     "abort": {
       "already_configured": "This Superloop account is already configured",
